@@ -26,7 +26,7 @@ describe("fluxo completo", () => {
       status: "changes_requested",
       awaiting: "creator",
       current_version: 1,
-      allowed_actions: [],
+      allowed_actions: ["approve"],
       open_change_request: {
         number: 1,
         version: 1,
@@ -123,13 +123,21 @@ describe("estados e conflitos", () => {
     expect(again.body.error.code).toBe("changes_already_requested");
   });
 
-  it("aprovar com ajustes em aberto -> 409 changes_pending", async () => {
+  it("aprovar a versão atual com ajustes em aberto é permitido e fecha o pedido (closed_by_approval)", async () => {
     const t = setup();
     await t.create();
     await t.requestChanges("s1", { version: 1, reason: "a", due_date: "2026-03-20" });
     const res = await t.approve("s1", 1);
-    expect(res.status).toBe(409);
-    expect(res.body.error.code).toBe("changes_pending");
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ status: "approved", awaiting: "none", open_change_request: null, approved_version: 1 });
+    const { body } = await t.history("s1");
+    expect(body.timeline.map((e) => [e.type, e.version])).toEqual([
+      ["version_submitted", 1],
+      ["changes_requested", 1],
+      ["approved", 1],
+    ]);
+    expect(body.timeline[1]?.status).toBe("closed_by_approval");
+    expect((await t.submit("s1")).body.error.code).toBe("script_approved");
   });
 
   it("enviar versão sem pedido de ajustes -> 409 not_awaiting_creator", async () => {

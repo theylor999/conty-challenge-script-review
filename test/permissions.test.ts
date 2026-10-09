@@ -60,7 +60,7 @@ describe("quem pode o quê", () => {
     expect((await t.get("s1", "brand")).body.allowed_actions).toEqual(["request_changes", "approve"]);
     expect((await t.get("s1", "creator")).body.allowed_actions).toEqual([]);
     await t.requestChanges("s1", changes);
-    expect((await t.get("s1", "brand")).body.allowed_actions).toEqual([]);
+    expect((await t.get("s1", "brand")).body.allowed_actions).toEqual(["approve"]);
     expect((await t.get("s1", "creator")).body.allowed_actions).toEqual(["submit_version"]);
     await t.submit("s1");
     await t.approve("s1", 2);

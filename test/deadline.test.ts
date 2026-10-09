@@ -90,6 +90,14 @@ describe("resposta da criadora depois do prazo", () => {
     expect(body.timeline[2]).toMatchObject({ type: "version_submitted", version: 2, answers_change_request: 1, late: true });
   });
 
+  it("criadora some: a marca pode aprovar a versão atual mesmo com o prazo vencido", async () => {
+    const t = await openRequest();
+    t.clock.set("2026-04-30T12:00:00.000Z");
+    expect((await t.get("s1", "brand")).body.allowed_actions).toEqual(["approve"]);
+    expect((await t.approve("s1", 1)).status).toBe(200);
+    expect((await t.history("s1")).body.timeline[1]?.status).toBe("closed_by_approval");
+  });
+
   it("depois de atrasar, a marca ainda pode aprovar ou pedir novos ajustes com prazo novo", async () => {
     const t = await openRequest();
     t.clock.set("2026-03-20T12:00:00.000Z");

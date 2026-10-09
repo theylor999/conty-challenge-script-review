@@ -23,6 +23,8 @@ describe("pedido de ajustes: motivo e prazo obrigatórios", () => {
     ["mês 13", { ...ok, due_date: "2026-13-01" }, "due_date_invalid"],
     ["dia 31 em mês de 30", { ...ok, due_date: "2026-04-31" }, "due_date_invalid"],
     ["due_date numérico (timestamp)", { ...ok, due_date: 1773792000000 }, "due_date_invalid"],
+    ["sem version nem due_date: o prazo é cobrado primeiro", { reason: "Motivo" }, "due_date_required"],
+    ["prazo a mais de um ano", { ...ok, due_date: "2999-01-01" }, "due_date_too_far"],
     ["sem version", { reason: "Motivo", due_date: "2026-03-20" }, "version_required"],
     ["version como texto", { ...ok, version: "1" }, "version_invalid"],
     ["version fracionária", { ...ok, version: 1.5 }, "version_invalid"],

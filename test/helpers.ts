@@ -1,5 +1,5 @@
 import { openStore } from "../src/db.ts";
-import { fixedClock } from "../src/domain/clock.ts";
+import { fixedClock } from "./fixed-clock.ts";
 import { createApp } from "../src/http/app.ts";
 
 interface TimelineItem {

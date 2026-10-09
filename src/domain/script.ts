@@ -7,7 +7,9 @@ export const BRAND_TIMEZONE = "America/Sao_Paulo";
 export type Actor = "brand" | "creator";
 export type ScriptStatus = "awaiting_brand_review" | "changes_requested" | "approved";
 export type Action = "submit_version" | "request_changes" | "approve";
-export type ChangeRequestStatus = "open" | "answered" | "answered_late";
+export type ChangeRequestStatus = "open" | "answered" | "answered_late" | "closed_by_approval";
+
+const MAX_DAYS_AHEAD = 366;
 
 export interface ScriptVersion {
   number: number;
@@ -25,7 +27,7 @@ export interface ChangeRequest {
   requestedAt: string;
   status: ChangeRequestStatus;
   answeredByVersion: number | null;
-  answeredAt: string | null;
+  closedAt: string | null;
 }
 
 export interface Script {
@@ -66,8 +68,11 @@ export function awaiting(s: Script): Actor | "none" {
 
 /** Actions the given actor may take right now. Read access is open to both and not listed. */
 export function allowedActions(s: Script, actor: Actor): Action[] {
-  if (s.status === "awaiting_brand_review" && actor === "brand") return ["request_changes", "approve"];
-  if (s.status === "changes_requested" && actor === "creator") return ["submit_version"];
+  if (actor === "brand") {
+    if (s.status === "awaiting_brand_review") return ["request_changes", "approve"];
+    if (s.status === "changes_requested") return ["approve"];
+  }
+  if (actor === "creator" && s.status === "changes_requested") return ["submit_version"];
   return [];
 }
 
@@ -117,6 +122,9 @@ export function requestChanges(
   if (now.getTime() > dueAt) {
     fail("validation", "due_date_in_past", "O prazo já passou. Informe uma data de hoje ou futura (fuso America/Sao_Paulo).");
   }
+  if (dueAt - now.getTime() > MAX_DAYS_AHEAD * 86_400_000) {
+    fail("validation", "due_date_too_far", `O prazo está longe demais. Use uma data de até ${MAX_DAYS_AHEAD} dias a partir de hoje.`);
+  }
   const request: ChangeRequest = {
     number: s.changeRequests.length + 1,
     version: input.version,
@@ -126,7 +134,7 @@ export function requestChanges(
     requestedAt: now.toISOString(),
     status: "open",
     answeredByVersion: null,
-    answeredAt: null,
+    closedAt: null,
   };
   return { ...s, status: "changes_requested", changeRequests: [...s.changeRequests, request] };
 }
@@ -149,7 +157,7 @@ export function submitVersion(s: Script, content: string, clock: Clock): Script 
           ...c,
           status: now.getTime() > Date.parse(c.dueAt) ? ("answered_late" as const) : ("answered" as const),
           answeredByVersion: number,
-          answeredAt: nowIso,
+          closedAt: nowIso,
         }
       : c,
   );
@@ -161,13 +169,24 @@ export function submitVersion(s: Script, content: string, clock: Clock): Script 
   };
 }
 
+/**
+ * The brand may approve the current version while its own request is still open
+ * (it changed its mind, or the creator never answered). The request stays on
+ * record as closed_by_approval.
+ */
 export function approve(s: Script, version: number, clock: Clock): Script {
   assertNotApproved(s);
   assertCurrentVersion(s, version);
-  if (s.status === "changes_requested") {
-    fail("conflict", "changes_pending", "Há uma solicitação de ajustes em aberto. A marca só pode aprovar a nova versão enviada pela criadora ou criador.");
-  }
-  return { ...s, status: "approved", approvedVersion: version, approvedAt: clock.now().toISOString() };
+  const at = clock.now().toISOString();
+  return {
+    ...s,
+    status: "approved",
+    approvedVersion: version,
+    approvedAt: at,
+    changeRequests: s.changeRequests.map((c) =>
+      c.status === "open" ? { ...c, status: "closed_by_approval" as const, closedAt: at } : c,
+    ),
+  };
 }
 
 /**

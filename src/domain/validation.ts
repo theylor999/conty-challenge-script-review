@@ -52,7 +52,6 @@ export function parseApprove(raw: unknown): { version: number } {
 
 export function parseChangeRequest(raw: unknown): { version: number; reason: string; dueDate: string } {
   const body = asBody(raw);
-  const version = parseVersion(body);
   const reason = requiredText(body, "reason", LIMITS.reason, "O motivo", "reason_too_long", "reason_required", true);
   const dueDate = body.due_date;
   if (dueDate === undefined || dueDate === null || dueDate === "") {
@@ -61,5 +60,5 @@ export function parseChangeRequest(raw: unknown): { version: number; reason: str
   if (typeof dueDate !== "string" || parseCivilDate(dueDate) === null) {
     return fail("validation", "due_date_invalid", "`due_date` deve ser uma data válida no formato YYYY-MM-DD, sem horário.");
   }
-  return { version, reason, dueDate };
+  return { version: parseVersion(body), reason, dueDate };
 }

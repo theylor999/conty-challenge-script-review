@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { openStore } from "../src/db.ts";
 import { createScript, requestChanges } from "../src/domain/script.ts";
-import { fixedClock } from "../src/domain/clock.ts";
+import { fixedClock } from "./fixed-clock.ts";
 
 const dirs: string[] = [];
 afterEach(() => {

@@ -40,6 +40,13 @@ describe("pedido de ajustes: motivo e prazo obrigatórios", () => {
     expect(res.body.error.message).toEqual(expect.any(String));
   });
 
+  it("limite de 366 dias: o dia 10/03/2027 ainda passa, o 11/03/2027 não", async () => {
+    const t = setup("2026-03-10T15:00:00.000Z");
+    await t.create();
+    expect((await t.requestChanges("s1", { ...ok, due_date: "2027-03-11" })).body.error.code).toBe("due_date_too_far");
+    expect((await t.requestChanges("s1", { ...ok, due_date: "2027-03-10" })).status).toBe(201);
+  });
+
   it("29 de fevereiro em ano bissexto é uma data válida", async () => {
     const t = setup("2028-02-01T12:00:00.000Z");
     await t.create();

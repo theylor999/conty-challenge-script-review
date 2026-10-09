@@ -4,7 +4,7 @@ API para a marca pedir ajustes em um roteiro (com motivo e prazo) e para a criad
 
 ## Como rodar
 
-Node 22 ou mais novo.
+Node 22.13 ou mais novo (`node:sqlite` sem flag). Pode aparecer um aviso `ExperimentalWarning` do SQLite no terminal.
 
 ```bash
 npm install
@@ -92,11 +92,11 @@ Erros (os 422 e 409 foram vistos no curl; todos têm os testes):
 | sem `due_date` | 422 | `due_date_required` |
 | `due_date` com horário ou inexistente (`2026-02-30`) | 422 | `due_date_invalid` |
 | `due_date` já passou em São Paulo (`2026-10-08`) | 422 | `due_date_in_past` |
-| `due_date` a mais de 366 dias (`2999-01-01`) | 422 | `due_date_too_far` |
+| prazo que termina a mais de 366 dias de agora (`2999-01-01`) | 422 | `due_date_too_far` |
 | aprovar a v1 quando a atual é a v2 | 409 | `stale_version` |
 | pedir ajustes de novo na mesma versão | 409 | `changes_already_requested` |
 | nova versão sem pedido de ajustes | 409 | `not_awaiting_creator` |
-| qualquer escrita depois de aprovado | 409 | `script_approved` |
+| qualquer escrita depois de aprovado, mesmo com corpo inválido | 409 | `script_approved` |
 | ator trocado (criadora aprovando) | 403 | `forbidden_actor` |
 | sem `x-actor` | 401 | `actor_invalid` |
 
@@ -110,7 +110,7 @@ Erros (os 422 e 409 foram vistos no curl; todos têm os testes):
 - **Só a versão atual é analisada.** `version` no corpo é obrigatório em aprovar e pedir ajustes; outra versão dá 409 `stale_version`.
 - **Aprovado é final.** Nova versão, pedido de ajustes e segunda aprovação dão 409 `script_approved`.
 - **Linha do tempo em ordem causal** (versão, pedido sobre ela, próxima versão, aprovação), não por horário.
-- **Limite de 366 dias** no prazo: não está no enunciado; barra datas como 9999-12-31.
+- **Limite de 366 dias** (a partir de agora) no prazo: não está no enunciado; barra datas como 9999-12-31.
 - **Persistência:** `node:sqlite`, um documento JSON por roteiro (`src/db.ts`), porque o agregado é lido e gravado inteiro. Ler-alterar-gravar é síncrono, então não se intercala dentro de um processo.
 
 ## O que ficou de fora
@@ -131,7 +131,7 @@ Erros (os 422 e 409 foram vistos no curl; todos têm os testes):
 
 ## Testes
 
-`npm test`: 67 testes do vitest, todos com relógio controlado. Cobrem o fluxo completo e várias rodadas; histórico e imutabilidade das versões; prazo em 23:59:59.999 de SP (02:59:59.999Z do dia UTC seguinte, vale) e 00:00:00.000 de SP do dia seguinte (não vale); UTC já no dia 14 com SP ainda no 13; envio no último instante (`answered`) e um milissegundo depois (`answered_late`); limites do dia em SP (inclusive 2018), Nova York, Auckland e Kiritimati; validação de motivo e prazo; permissões e `allowed_actions`; conflitos de estado e versão; aprovação com pedido aberto; store em arquivo.
+`npm test`: 69 testes do vitest, todos com relógio controlado. Cobrem o fluxo completo e várias rodadas; histórico e imutabilidade das versões; prazo em 23:59:59.999 de SP (02:59:59.999Z do dia UTC seguinte, vale) e 00:00:00.000 de SP do dia seguinte (não vale); UTC já no dia 14 com SP ainda no 13; envio no último instante (`answered`) e um milissegundo depois (`answered_late`); limites do dia em SP (inclusive 2018), Nova York, Auckland e Kiritimati; validação de motivo e prazo; permissões e `allowed_actions`; conflitos de estado e versão; aprovação com pedido aberto; store em arquivo.
 
 ## Uso de IA
 

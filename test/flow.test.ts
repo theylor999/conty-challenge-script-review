@@ -187,6 +187,18 @@ describe("estados e conflitos", () => {
     expect(body.script).toMatchObject({ status: "approved", awaiting: "none", allowed_actions: [] });
   });
 
+  it("aprovado trava antes da validação: corpo inválido também recebe 409", async () => {
+    const t = setup();
+    await t.create();
+    await t.approve("s1", 1);
+    const calls = [
+      await t.call("POST", "/scripts/s1/versions", "creator", {}),
+      await t.call("POST", "/scripts/s1/change-requests", "brand", {}),
+      await t.call("POST", "/scripts/s1/approve", "brand", {}),
+    ];
+    for (const res of calls) expect(res.body.error.code).toBe("script_approved");
+  });
+
   it("falha de validação ou de estado não altera o roteiro", async () => {
     const t = setup();
     await t.create();

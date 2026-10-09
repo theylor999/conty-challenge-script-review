@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { ScriptStore } from "../db.ts";
 import type { Clock } from "../domain/clock.ts";
 import { DomainError, fail, type ErrorKind } from "../domain/errors.ts";
-import { approve, createScript, requestChanges, submitVersion, type Actor, type Script } from "../domain/script.ts";
+import { approve, assertNotApproved, createScript, requestChanges, submitVersion, type Actor, type Script } from "../domain/script.ts";
 import { parseApprove, parseChangeRequest, parseContent, parseCreateScript } from "../domain/validation.ts";
 import { historyView, scriptView } from "./view.ts";
 
@@ -78,6 +78,7 @@ export function createApp({ store, clock, newId = randomUUID }: Deps) {
     const actor = requireRole(c, "creator");
     const body = await readJson(c);
     const script = load(c.req.param("id"));
+    assertNotApproved(script);
     const next = submitVersion(script, parseContent(body).content, clock);
     store.save(next);
     return c.json(scriptView(next, actor, clock.now()), 201);
@@ -87,6 +88,7 @@ export function createApp({ store, clock, newId = randomUUID }: Deps) {
     const actor = requireRole(c, "brand");
     const body = await readJson(c);
     const script = load(c.req.param("id"));
+    assertNotApproved(script);
     const next = requestChanges(script, parseChangeRequest(body), clock);
     store.save(next);
     return c.json(scriptView(next, actor, clock.now()), 201);
@@ -96,6 +98,7 @@ export function createApp({ store, clock, newId = randomUUID }: Deps) {
     const actor = requireRole(c, "brand");
     const body = await readJson(c);
     const script = load(c.req.param("id"));
+    assertNotApproved(script);
     const next = approve(script, parseApprove(body).version, clock);
     store.save(next);
     return c.json(scriptView(next, actor, clock.now()));

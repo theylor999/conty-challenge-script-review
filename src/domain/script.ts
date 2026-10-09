@@ -91,7 +91,7 @@ export function createScript(input: { id: string; title: string; content: string
 }
 
 /** Every mutation starts here: an approved script is closed for good. */
-function assertNotApproved(s: Script): void {
+export function assertNotApproved(s: Script): void {
   if (s.status === "approved") fail("conflict", "script_approved", "O roteiro já foi aprovado e não aceita mais alterações.");
 }
 
@@ -123,7 +123,7 @@ export function requestChanges(
     fail("validation", "due_date_in_past", "O prazo já passou. Informe uma data de hoje ou futura (fuso America/Sao_Paulo).");
   }
   if (dueAt - now.getTime() > MAX_DAYS_AHEAD * 86_400_000) {
-    fail("validation", "due_date_too_far", `O prazo está longe demais. Use uma data de até ${MAX_DAYS_AHEAD} dias a partir de hoje.`);
+    fail("validation", "due_date_too_far", `O prazo está longe demais. Ele deve terminar em até ${MAX_DAYS_AHEAD} dias a partir de agora.`);
   }
   const request: ChangeRequest = {
     number: s.changeRequests.length + 1,

@@ -24,7 +24,6 @@ describe("pedido de ajustes: motivo e prazo obrigatórios", () => {
     ["dia 31 em mês de 30", { ...ok, due_date: "2026-04-31" }, "due_date_invalid"],
     ["due_date numérico (timestamp)", { ...ok, due_date: 1773792000000 }, "due_date_invalid"],
     ["sem version nem due_date: o prazo é cobrado primeiro", { reason: "Motivo" }, "due_date_required"],
-    ["prazo a mais de um ano", { ...ok, due_date: "2999-01-01" }, "due_date_too_far"],
     ["sem version", { reason: "Motivo", due_date: "2026-03-20" }, "version_required"],
     ["version como texto", { ...ok, version: "1" }, "version_invalid"],
     ["version fracionária", { ...ok, version: 1.5 }, "version_invalid"],
@@ -40,11 +39,12 @@ describe("pedido de ajustes: motivo e prazo obrigatórios", () => {
     expect(res.body.error.message).toEqual(expect.any(String));
   });
 
-  it("limite de 366 dias: o dia 10/03/2027 ainda passa, o 11/03/2027 não", async () => {
+  it("prazo distante mas válido é aceito, inclusive 9999-12-31", async () => {
     const t = setup("2026-03-10T15:00:00.000Z");
     await t.create();
-    expect((await t.requestChanges("s1", { ...ok, due_date: "2027-03-11" })).body.error.code).toBe("due_date_too_far");
-    expect((await t.requestChanges("s1", { ...ok, due_date: "2027-03-10" })).status).toBe(201);
+    const res = await t.requestChanges("s1", { ...ok, due_date: "9999-12-31" });
+    expect(res.status).toBe(201);
+    expect(res.body.open_change_request?.due_at).toBe("+010000-01-01T02:59:59.999Z");
   });
 
   it("29 de fevereiro em ano bissexto é uma data válida", async () => {

@@ -4,7 +4,7 @@ API para a marca pedir ajustes em um roteiro (com motivo e prazo) e para a criad
 
 ## Como rodar
 
-Node 22.13 ou mais novo (`node:sqlite` sem flag). Pode aparecer um aviso `ExperimentalWarning` do SQLite no terminal.
+Node 22.13 ou mais novo na linha 22, ou 23.4 ou mais novo (`node:sqlite` sem flag; o 23.0 a 23.3 não serve). Pode aparecer um aviso `ExperimentalWarning` do SQLite no terminal.
 
 ```bash
 npm install
@@ -52,7 +52,7 @@ Erros: `{ "error": { "code", "message" } }`, mensagem em pt-BR.
 
 ## Exemplo real
 
-Saídas capturadas com curl em 09/10/2026 (`PORT=3187`). Nas respostas omiti `id`, `title`, `content`, `timezone` e `created_at` quando não mudam.
+Saídas capturadas com curl em 09/10/2026, com o servidor em `PORT=3187 npm run dev`. `ID` é o `id` devolvido no primeiro passo (`ID=...`). Nas respostas omiti `id`, `title`, `content`, `timezone` e `created_at` quando não mudam.
 
 ```
 $ curl -s -X POST localhost:3187/scripts -H 'x-actor: creator' -H 'content-type: application/json' \
@@ -92,11 +92,10 @@ Erros (os 422 e 409 foram vistos no curl; todos têm os testes):
 | sem `due_date` | 422 | `due_date_required` |
 | `due_date` com horário ou inexistente (`2026-02-30`) | 422 | `due_date_invalid` |
 | `due_date` já passou em São Paulo (`2026-10-08`) | 422 | `due_date_in_past` |
-| prazo que termina a mais de 366 dias de agora (`2999-01-01`) | 422 | `due_date_too_far` |
 | aprovar a v1 quando a atual é a v2 | 409 | `stale_version` |
 | pedir ajustes de novo na mesma versão | 409 | `changes_already_requested` |
 | nova versão sem pedido de ajustes | 409 | `not_awaiting_creator` |
-| qualquer escrita depois de aprovado, mesmo com corpo inválido | 409 | `script_approved` |
+| qualquer escrita depois de aprovado, mesmo com campos inválidos (JSON malformado dá 400 `invalid_json`) | 409 | `script_approved` |
 | ator trocado (criadora aprovando) | 403 | `forbidden_actor` |
 | sem `x-actor` | 401 | `actor_invalid` |
 
@@ -110,7 +109,6 @@ Erros (os 422 e 409 foram vistos no curl; todos têm os testes):
 - **Só a versão atual é analisada.** `version` no corpo é obrigatório em aprovar e pedir ajustes; outra versão dá 409 `stale_version`.
 - **Aprovado é final.** Nova versão, pedido de ajustes e segunda aprovação dão 409 `script_approved`.
 - **Linha do tempo em ordem causal** (versão, pedido sobre ela, próxima versão, aprovação), não por horário.
-- **Limite de 366 dias** (a partir de agora) no prazo: não está no enunciado; barra datas como 9999-12-31.
 - **Persistência:** `node:sqlite`, um documento JSON por roteiro (`src/db.ts`), porque o agregado é lido e gravado inteiro. Ler-alterar-gravar é síncrono, então não se intercala dentro de um processo.
 
 ## O que ficou de fora
@@ -119,7 +117,7 @@ Erros (os 422 e 409 foram vistos no curl; todos têm os testes):
 - Listagem e paginação de roteiros; quem cria guarda o `id`.
 - Notificações: a criadora precisa consultar para ver o pedido.
 - Prorrogar ou cancelar um pedido aberto sem aprovar.
-- Idempotência (um reenvio de `POST /versions` recebe 409, não duplica) e limite de tamanho do corpo na camada HTTP.
+- Idempotência: um reenvio imediato de `POST /versions` recebe 409, mas depois de um novo pedido de ajustes o mesmo reenvio vira outra versão. Também falta limite de tamanho do corpo na camada HTTP.
 - Fuso por marca (hoje é uma constante) e concorrência entre processos que dividem o mesmo arquivo.
 
 ## O que faria com mais tempo
@@ -131,7 +129,7 @@ Erros (os 422 e 409 foram vistos no curl; todos têm os testes):
 
 ## Testes
 
-`npm test`: 69 testes do vitest, todos com relógio controlado. Cobrem o fluxo completo e várias rodadas; histórico e imutabilidade das versões; prazo em 23:59:59.999 de SP (02:59:59.999Z do dia UTC seguinte, vale) e 00:00:00.000 de SP do dia seguinte (não vale); UTC já no dia 14 com SP ainda no 13; envio no último instante (`answered`) e um milissegundo depois (`answered_late`); limites do dia em SP (inclusive 2018), Nova York, Auckland e Kiritimati; validação de motivo e prazo; permissões e `allowed_actions`; conflitos de estado e versão; aprovação com pedido aberto; store em arquivo.
+`npm test`: 68 testes do vitest, todos com relógio controlado. Cobrem o fluxo completo e várias rodadas; histórico e imutabilidade das versões; prazo em 23:59:59.999 de SP (02:59:59.999Z do dia UTC seguinte, vale) e 00:00:00.000 de SP do dia seguinte (não vale); UTC já no dia 14 com SP ainda no 13; envio no último instante (`answered`) e um milissegundo depois (`answered_late`); limites do dia em SP (inclusive 2018), Nova York, Auckland e Kiritimati; validação de motivo e prazo; permissões e `allowed_actions`; conflitos de estado e versão; aprovação com pedido aberto; store em arquivo.
 
 ## Uso de IA
 
@@ -141,4 +139,4 @@ Usei mais de um modelo de IA, cada um num papel: Claude Opus 5.5 para planejar, 
 - Quebrei de propósito a comparação do prazo (`>` virando `>=` e `dueAt - 1`) e conferi que o teste de 23:59:59.999 falha nos dois casos.
 - Conferi que a linha do tempo não depende do relógio: o teste do histórico usa relógio parado, com todos os eventos no mesmo instante.
 - A primeira versão não deixava a marca aprovar com ajustes em aberto; mudei porque a marca ficava presa se a criadora não respondesse. Agora o pedido fecha como `closed_by_approval`.
-- Adicionei o limite de 366 dias no prazo, tirei os `any` dos testes e acrescentei `close()` ao store porque o teste com arquivo falhava no Windows.
+- Tirei os `any` dos testes e acrescentei `close()` ao store porque o teste com arquivo falhava no Windows.

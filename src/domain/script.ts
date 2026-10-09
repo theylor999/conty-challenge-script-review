@@ -9,8 +9,6 @@ export type ScriptStatus = "awaiting_brand_review" | "changes_requested" | "appr
 export type Action = "submit_version" | "request_changes" | "approve";
 export type ChangeRequestStatus = "open" | "answered" | "answered_late" | "closed_by_approval";
 
-const MAX_DAYS_AHEAD = 366;
-
 export interface ScriptVersion {
   number: number;
   content: string; // never edited after creation
@@ -121,9 +119,6 @@ export function requestChanges(
   const now = clock.now();
   if (now.getTime() > dueAt) {
     fail("validation", "due_date_in_past", "O prazo já passou. Informe uma data de hoje ou futura (fuso America/Sao_Paulo).");
-  }
-  if (dueAt - now.getTime() > MAX_DAYS_AHEAD * 86_400_000) {
-    fail("validation", "due_date_too_far", `O prazo está longe demais. Ele deve terminar em até ${MAX_DAYS_AHEAD} dias a partir de agora.`);
   }
   const request: ChangeRequest = {
     number: s.changeRequests.length + 1,

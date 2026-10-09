@@ -6,6 +6,7 @@ export interface ScriptStore {
   insert(script: Script): void;
   /** Replaces the stored aggregate. Callers load, change and save without awaiting in between. */
   save(script: Script): void;
+  close(): void;
 }
 
 /**
@@ -29,6 +30,9 @@ export function openStore(path = ":memory:"): ScriptStore {
     },
     save(script) {
       update.run(JSON.stringify(script), script.id);
+    },
+    close() {
+      db.close();
     },
   };
 }
